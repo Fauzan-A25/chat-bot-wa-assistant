@@ -3,6 +3,63 @@ const { withRetry } = require('../utils/retry.util');
 const { SHEET_NAME_MAP, TOOL_TRIGGER_WORDS } = require('../config/constants');
 const { isAdmin } = require('../utils/auth.util');
 
+// ✅ Helper: Parse tanggal format - supports both ISO 8601 and "DD MMM YYYY" (OS-independent)
+function parseTanggalString(tanggalStr) {
+  if (!tanggalStr) return null;
+  
+  const strTrimmed = String(tanggalStr).trim();
+  
+  // Try to parse ISO 8601 format first (e.g., "2026-01-05T17:00:00.000Z")
+  if (strTrimmed.includes('T') && strTrimmed.includes('Z')) {
+    const isoDate = new Date(strTrimmed);
+    if (!isNaN(isoDate.getTime())) {
+      // Return date at midnight UTC
+      return new Date(Date.UTC(isoDate.getUTCFullYear(), isoDate.getUTCMonth(), isoDate.getUTCDate()));
+    }
+  }
+  
+  const months = {
+    'jan': 0, 'january': 0,
+    'feb': 1, 'february': 1,
+    'mar': 2, 'march': 2,
+    'apr': 3, 'april': 3,
+    'may': 4,
+    'jun': 5, 'june': 5,
+    'jul': 6, 'july': 6,
+    'aug': 7, 'august': 7,
+    'sep': 8, 'september': 8,
+    'oct': 9, 'october': 9,
+    'nov': 10, 'november': 10,
+    'dec': 11, 'december': 11
+  };
+  
+  // Match format: "06 Jan 2026" or "6 Jan 2026"
+  const match = strTrimmed.match(/^(\d{1,2})\s+([a-zA-Z]{3,})\s+(\d{4})$/);
+  if (!match) {
+    console.warn(`⚠️ Invalid date format: "${tanggalStr}"`);
+    return null;
+  }
+  
+  const [, day, monthStr, year] = match;
+  const month = months[monthStr.toLowerCase()];
+  
+  if (month === undefined) {
+    console.warn(`⚠️ Unknown month: "${monthStr}"`);
+    return null;
+  }
+  
+  // Create date at midnight UTC to avoid timezone issues
+  const date = new Date(Date.UTC(parseInt(year), month, parseInt(day)));
+  return date;
+}
+
+// ✅ Get today's date normalized
+function getTodayDateOnly() {
+  const today = new Date();
+  // Create date at midnight UTC
+  return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+}
+
 // ✅ NEW: Format KantongSaku data untuk WhatsApp (Summary Today Only)
 function formatKantongSakuForWA(data) {
   if (!data || !data.length) {
@@ -11,62 +68,69 @@ function formatKantongSakuForWA(data) {
 
   const TOLERANCE_LIMIT = 40000; // Batas toleransi: 40rb
 
-  // Get today's date 
-  const today = new Date();
-  const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayDateOnly = getTodayDateOnly();
   
-  console.log(`🔍 KantongSaku filter - Looking for today:`, {
-    todayDate: todayDateOnly.toISOString().split('T')[0],
-    todayFormatted: todayDateOnly.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-    rawDataSample: data.slice(0, 3).map(r => ({ 
-      date: r['Tanggal'], 
-      nominal: r['Nominal'],
-      parsedDate: r['Tanggal'] ? new Date(r['Tanggal']).toISOString().split('T')[0] : 'invalid'
-    }))
-  });
-  
-  // Filter data for today only
-  const todayData = data.filter(row => {
+  // Extract all valid dates from data
+  const validDates = [];
+  data.forEach(row => {
     const rowDateStr = String(row['Tanggal'] || '').trim();
-    
-    if (!rowDateStr) {
-      console.log(`⚠️ EMPTY DATE in row:`, row);
-      return false;
-    }
-    
-    try {
-      // Parse ISO date string
-      const rowDate = new Date(rowDateStr);
-      const rowDateOnly = new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate());
-      
-      // Compare dates
-      const matches = rowDateOnly.getTime() === todayDateOnly.getTime();
-      
-      if (matches) {
-        console.log(`✅ MATCHED - Raw: "${rowDateStr}" → Parsed: ${rowDateOnly.toISOString().split('T')[0]}`);
+    if (rowDateStr) {
+      const rowDate = parseTanggalString(rowDateStr);
+      if (rowDate) {
+        validDates.push({ date: rowDate, dateStr: rowDate.toISOString() });
       }
-      
-      return matches;
-    } catch (e) {
-      console.error(`❌ DATE PARSE ERROR: "${rowDateStr}"`, e.message);
-      return false;
     }
   });
+  
+  // Remove duplicates and sort by date descending
+  const uniqueDates = [...new Map(validDates.map(item => [item.dateStr, item])).values()];
+  uniqueDates.sort((a, b) => b.date.getTime() - a.date.getTime());
+  
+  console.log(`🔍 KantongSaku filter:`, {
+    todayUTC: todayDateOnly.toISOString(),
+    availableDates: uniqueDates.map(d => d.dateStr),
+    latestDate: uniqueDates[0]?.dateStr
+  });
+  
+  // Try to get today's data first, otherwise use latest available date
+  let targetDate = todayDateOnly;
+  let targetDateStr = `${todayDateOnly.getUTCDate().toString().padStart(2, '0')} Jan ${todayDateOnly.getUTCFullYear()}`;
+  
+  let todayData = data.filter(row => {
+    const rowDateStr = String(row['Tanggal'] || '').trim();
+    if (!rowDateStr) return false;
+    
+    const rowDate = parseTanggalString(rowDateStr);
+    if (!rowDate) return false;
+    
+    return rowDate.getTime() === targetDate.getTime();
+  });
+  
+  // If no data for today, use the latest available date
+  if (!todayData.length && uniqueDates.length > 0) {
+    targetDate = uniqueDates[0].date;
+    const day = targetDate.getUTCDate().toString().padStart(2, '0');
+    const month = targetDate.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+    const year = targetDate.getUTCFullYear();
+    targetDateStr = `${day} ${month} ${year}`;
+    
+    console.log(`📅 No today's data, using latest available: ${targetDateStr}`);
+    
+    todayData = data.filter(row => {
+      const rowDateStr = String(row['Tanggal'] || '').trim();
+      if (!rowDateStr) return false;
+      
+      const rowDate = parseTanggalString(rowDateStr);
+      if (!rowDate) return false;
+      
+      return rowDate.getTime() === targetDate.getTime();
+    });
+  }
 
-  console.log(`📊 Filtered ${todayData.length} records for today out of ${data.length} total`);
+  console.log(`📊 Filtered ${todayData.length} records for ${targetDateStr} out of ${data.length} total`);
 
   if (!todayData.length) {
-    const todayFormatted = todayDateOnly.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-    console.log(`⚠️ NO TRANSACTIONS - Searched for: ${todayFormatted}`);
-    console.log(`📋 Available dates in data:`, data.slice(0, 5).map(r => {
-      try {
-        const d = new Date(r['Tanggal']);
-        return d.toISOString().split('T')[0];
-      } catch (e) {
-        return r['Tanggal'];
-      }
-    }));
-    return `📂 Tidak ada transaksi untuk hari ini (${todayFormatted}).`;
+    return `📂 Tidak ada data transaksi yang tersedia.`;
   }
 
   // Find row with Total value (akumulatif dan otomatis update)

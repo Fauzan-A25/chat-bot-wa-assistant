@@ -1,16 +1,25 @@
 const { getKantongSakuData } = require('../services/spreadsheet.service');
+const { isAdmin } = require('../utils/auth.util');
 
 async function handleShowKantongSaku(message, userId) {
     try {
+        // ✅ DOUBLE CHECK: Pastikan user adalah admin
+        if (!isAdmin(userId)) {
+            console.log(`❌ SECURITY: Non-admin user ${userId} attempted kantong saku access`);
+            return message.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!`);
+        }
+
         console.log('💰 Fetching KantongSaku data...');
         const result = await getKantongSakuData(userId);
         
         if (!result.success) {
-            console.log('❌ KantongSaku access denied or error:', result.error);
+            console.log('❌ KantongSaku error:', result.error);
             return message.reply(result.message || `🔒 ${result.error}`);
         }
 
         console.log(`✅ KantongSaku data fetched (${result.count} records)`);
+        
+        // ✅ RETURN FORMATTED MESSAGE - JANGAN KIRIM KE GEMINI
         return message.reply(result.message);
         
     } catch (error) {

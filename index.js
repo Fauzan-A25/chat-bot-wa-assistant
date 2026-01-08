@@ -176,7 +176,16 @@ client.on('message', async (message) => {
     // SHOW_KANTONGSAKU Intent (ADMIN ONLY)
     if (intent === INTENTS.SHOW_KANTONGSAKU) {
       console.log('💰 SHOW KANTONGSAKU INTENT TRIGGERED!');
-      return handleShowKantongSaku(message, userId);
+      
+      // ✅ CHECK ADMIN ACCESS FIRST
+      if (!isAdmin(userId)) {
+        const userRole = getUserRole(userId);
+        console.log(`❌ User tidak admin - blocked dari kantong saku`);
+        return message.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
+      }
+      
+      console.log(`✅ User is admin - proceeding to fetch kantong saku`);
+      return await handleShowKantongSaku(message, userId);
     }
         // HELP Intent
     if (intent === INTENTS.HELP) {

@@ -7,16 +7,33 @@ const config = require('../config/config');
  * @returns {boolean}
  */
 function isAdmin(userId) {
-    if (!userId || config.adminList.length === 0) return false;
+    if (!userId || config.adminList.length === 0) {
+        if (config.adminList.length === 0) {
+            console.log(`⚠️ Auth check: adminList EMPTY`);
+        }
+        return false;
+    }
     
     // Extract phone number from WhatsApp ID (remove @c.us and any non-digits)
     const userPhone = String(userId).replace(/[^0-9]/g, '');
     
-    // Admin list juga sudah berisi phone numbers saja (dari config.js)
-    return config.adminList.some(adminPhone => {
-        // Simple direct comparison
-        return userPhone === adminPhone;
+    // Debug logging
+    const isAdminUser = config.adminList.some(adminPhone => userPhone === adminPhone);
+    
+    console.log(`🔐 Auth Check:`, {
+        userId: userId.substring(0, 20) + '...',
+        extractedPhone: userPhone,
+        adminList: config.adminList,
+        isAdmin: isAdminUser
     });
+    
+    if (isAdminUser) {
+        console.log(`✅ ADMIN VERIFIED: ${userPhone}`);
+    } else {
+        console.log(`❌ NOT ADMIN: ${userPhone} (allowed: ${config.adminList.join(', ')})`);
+    }
+    
+    return isAdminUser;
 }
 
 /**

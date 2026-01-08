@@ -173,31 +173,23 @@ function formatKantongSakuForWA(data) {
   const isWarning = dailyExpense > TOLERANCE_LIMIT;
   const exceeding = dailyExpense - TOLERANCE_LIMIT;
   
-  // Build pretty summary
+  // Build compact summary for mobile
   let message = '';
-  message += '╔═══════════════════════════════╗\n';
-  message += '║   💰 KANTONG SAKU TODAY 💰   ║\n';
-  message += '╚═══════════════════════════════╝\n\n';
+  message += '💰 *KANTONG SAKU*\n';
+  message += `📅 ${todayData[0]['Tanggal']}\n\n`;
   
-  message += `📅 Tanggal: ${todayData[0]['Tanggal']}\n`;
-  message += `🔢 Transaksi: ${transactionCount}x\n\n`;
-  
-  message += '─────────────────────────────────\n';
-  message += `📤 Pengeluaran    : Rp${dailyExpense.toLocaleString('id-ID')}\n`;
-  message += `📊 Batas Aman    : Rp${TOLERANCE_LIMIT.toLocaleString('id-ID')}\n`;
+  message += `📤 Pengeluaran: Rp${dailyExpense.toLocaleString('id-ID')}\n`;
+  message += `📊 Batas: Rp${TOLERANCE_LIMIT.toLocaleString('id-ID')}\n`;
   
   if (isWarning) {
-    message += `⚠️  Melebihi      : Rp${exceeding.toLocaleString('id-ID')}\n`;
-    message += `🔴 Status        : WARNING\n`;
+    message += `🔴 *WARNING* +Rp${exceeding.toLocaleString('id-ID')}\n`;
   } else {
     const remaining = TOLERANCE_LIMIT - dailyExpense;
-    message += `✅ Sisa Toleransi: Rp${remaining.toLocaleString('id-ID')}\n`;
-    message += `🟢 Status        : AMAN\n`;
+    message += `🟢 *AMAN* sisa Rp${remaining.toLocaleString('id-ID')}\n`;
   }
   
-  message += '─────────────────────────────────\n';
-  message += `💰 Saldo Akhir   : Rp${finalSaldo.toLocaleString('id-ID')}\n`;
-  message += '═════════════════════════════════\n';
+  message += `\n💰 Saldo: Rp${finalSaldo.toLocaleString('id-ID')}`;
+
 
   return message;
 }

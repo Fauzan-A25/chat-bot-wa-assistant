@@ -1,14 +1,8 @@
 const { getKantongSakuData } = require('../services/spreadsheet.service');
-const { isAdmin } = require('../utils/auth.util');
 
 async function handleShowKantongSaku(message, userId) {
     try {
-        // ✅ DOUBLE CHECK: Pastikan user adalah admin
-        if (!isAdmin(userId)) {
-            console.log(`❌ SECURITY: Non-admin user ${userId} attempted kantong saku access`);
-            return message.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!`);
-        }
-
+        // ✅ Auth sudah di-check di index.js - tidak perlu check lagi di sini
         console.log('💰 Fetching KantongSaku data...');
         const result = await getKantongSakuData(userId);
         

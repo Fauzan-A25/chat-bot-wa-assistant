@@ -194,26 +194,8 @@ function formatKantongSakuForWA(data) {
   return message;
 }
 
-// ✅ Check admin access untuk KantongSaku
-async function checkKantongSakuAccess(userId) {
-  if (!isAdmin(userId)) {
-    return {
-      success: false,
-      error: '🔒 ACCESS DENIED',
-      message: 'Hanya admin yang bisa akses Kantong Saku! Hubungi admin untuk informasi pengeluaran.'
-    };
-  }
-  return { success: true };
-}
-
-// ✅ NEW: Get KantongSaku data dengan auth check
+// ✅ NEW: Get KantongSaku data (auth sudah di-check di index.js)
 async function getKantongSakuData(userId) {
-  // Check authorization
-  const authCheck = await checkKantongSakuAccess(userId);
-  if (!authCheck.success) {
-    return authCheck;
-  }
-
   // Read from spreadsheet
   try {
     const data = await callSpreadsheetTool('read', { sheet: 'KantongSaku' });
@@ -470,9 +452,8 @@ module.exports = {
   addExperienceToSheet,   // ✅ NEW
   addDataToSheet,         // ✅ Generic function
   checkExperienceDuplicate, // ✅ NEW
-  getKantongSakuData,     // ✅ NEW - Get KantongSaku dengan auth
+  getKantongSakuData,     // ✅ NEW - Get KantongSaku data
   formatKantongSakuForWA, // ✅ NEW - Format untuk WhatsApp
-  checkKantongSakuAccess, // ✅ NEW - Check admin access
   detectSheetName,
   shouldUseTools
 };

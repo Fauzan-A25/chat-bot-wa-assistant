@@ -75,6 +75,27 @@ client.on('message', async (message) => {
     messageBody = messageBody.substring(BOT_PREFIX.length).trim();
   }
 
+  // ✅ CACHE ADMIN STATUS ONCE - jangan check berkali-kali
+  const isUserAdmin = isAdmin(userId);
+  const userRole = getUserRole(userId);
+  
+  console.log(`🔐 User auth cached: ${userId.substring(0, 15)}... | Role: ${userRole} | Admin: ${isUserAdmin}`);
+
+  // ✅ EARLY DETECTION: Kantong Saku (bypass intent detection)
+  const messageBodyLower = messageBody.toLowerCase();
+  if (messageBodyLower.includes('kantong') && messageBodyLower.includes('saku')) {
+    console.log('⚡ EARLY DETECT: KANTONG SAKU - bypass intent detection');
+    
+    // Check admin access
+    if (!isUserAdmin) {
+      return message.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
+    }
+    
+    // Fetch and return kantong saku
+    const { handleShowKantongSaku } = require('./src/handlers/kantongsaku.handler');
+    return await handleShowKantongSaku(message, userId);
+  }
+
   // 🔥 SMART COMMAND ROUTING dengan AI Intent Detection
   const pendingAction = deleteConfirmations.get(userId)?.action;
 
@@ -92,8 +113,7 @@ client.on('message', async (message) => {
     
     // 🔒 PROJECT-RELATED INTENTS (Admin only)
     if ([INTENTS.ADD_PROJECT, INTENTS.EDIT_PROJECT, INTENTS.CONFIRM_PROJECT, INTENTS.CANCEL_PROJECT].includes(intent)) {
-      if (!isAdmin(userId)) {
-        const userRole = getUserRole(userId);
+      if (!isUserAdmin) {
         return message.reply(`🔒 Hanya admin yang bisa manage projects.\n👤 Role anda: ${userRole}`);
       }
     }
@@ -177,26 +197,21 @@ client.on('message', async (message) => {
     if (intent === INTENTS.SHOW_KANTONGSAKU) {
       console.log('💰 SHOW KANTONGSAKU INTENT TRIGGERED!');
       
-      // ✅ CHECK ADMIN ACCESS FIRST
-      if (!isAdmin(userId)) {
-        const userRole = getUserRole(userId);
-        console.log(`❌ User tidak admin - blocked dari kantong saku`);
+      // ✅ SUDAH CACHED - tidak perlu check ulang
+      if (!isUserAdmin) {
         return message.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
       }
       
-      console.log(`✅ User is admin - proceeding to fetch kantong saku`);
       return await handleShowKantongSaku(message, userId);
     }
         // HELP Intent
     if (intent === INTENTS.HELP) {
       console.log('❓ HELP INTENT TRIGGERED!');
-      const userRole = getUserRole(userId);
-      const isAdminUser = isAdmin(userId);
-      
+      // ✅ SUDAH CACHED - gunakan isUserAdmin
       let helpText = `🤖 **SPREADSHEET BOT HELP** v2.0\n`;
       helpText += `👤 Role: ${userRole.toUpperCase()}\n\n`;
       
-      if (isAdminUser) {
+      if (isUserAdmin) {
         helpText += `💼 **Project Management (ADMIN ONLY):**\n`;
         helpText += `• "saya ingin tambah project baru"\n`;
         helpText += `• "ubah title project: ..."\n`;

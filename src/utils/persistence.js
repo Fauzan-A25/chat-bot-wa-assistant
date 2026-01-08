@@ -17,12 +17,12 @@ function ensureDirectories() {
     }
 }
 
-// Get user folder (sanitize userId untuk safe filename)
-// ✅ FIXED: Normalize path untuk cross-platform compatibility (Windows + Ubuntu)
+// Get user folder (extract phone number only for consistency)
+// ✅ UPDATED: Simpan hanya dengan nomor telepon (cross-platform compatible)
 function getUserDataPath(userId) {
-    // Consistent sanitization: @c.us → _c_us
-    const sanitized = userId.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const userPath = path.join(USER_DATA_DIR, sanitized);
+    // Extract phone number only: "6282116475003@c.us" → "6282116475003"
+    const phoneNumber = userId.replace(/[^0-9]/g, '');
+    const userPath = path.join(USER_DATA_DIR, phoneNumber);
     // Normalize path untuk cross-platform (convert \ ke / on Windows)
     return path.normalize(userPath);
 }

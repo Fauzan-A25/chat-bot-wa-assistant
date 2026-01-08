@@ -3,7 +3,11 @@ require('dotenv').config();
 module.exports = {
     geminiApiKey: process.env.GEMINI_API_KEY,
     spreadsheetWebAppUrl: process.env.SPREADSHEET_WEBAPP_URL || '',
-    adminList: (process.env.ADMIN_IDS || '').split(',').filter(id => id.trim()),
+    // ✅ UPDATED: Extract phone numbers only from admin list (remove @c.us, spaces, etc)
+    adminList: (process.env.ADMIN_IDS || '')
+        .split(',')
+        .map(id => id.trim().replace(/[^0-9]/g, '')) // Extract phone number only
+        .filter(id => id.length > 0),
     
     // Bot settings
     botSettings: {
@@ -22,7 +26,7 @@ module.exports = {
         if (this.adminList.length === 0) {
             console.warn('⚠️ ADMIN_IDS kosong di .env - tidak ada admin yang terdaftar');
         } else {
-            console.log(`✅ Admin terdeteksi: ${this.adminList.length} user`);
+            console.log(`✅ Admin terdeteksi: ${this.adminList.length} user (${this.adminList.join(', ')})`);
         }
     }
 };

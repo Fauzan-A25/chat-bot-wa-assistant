@@ -2,25 +2,20 @@ const config = require('../config/config');
 
 /**
  * Check if user is admin
- * ✅ FIXED: Cross-platform compatible admin check
+ * ✅ UPDATED: Extract phone number and compare (works on Windows + Ubuntu/Termux)
  * @param {string} userId - WhatsApp user ID (format: 6281234567890@c.us)
  * @returns {boolean}
  */
 function isAdmin(userId) {
     if (!userId || config.adminList.length === 0) return false;
     
-    // Extract phone number from WhatsApp ID (handle both with/without @c.us)
-    const phoneNumber = String(userId).split('@')[0].trim();
+    // Extract phone number from WhatsApp ID (remove @c.us and any non-digits)
+    const userPhone = String(userId).replace(/[^0-9]/g, '');
     
-    return config.adminList.some(adminId => {
-        // Normalize admin ID untuk comparison
-        const adminIdNorm = String(adminId).trim();
-        const adminPhone = adminIdNorm.split('@')[0].trim();
-        
-        // Check both full ID dan phone number
-        return phoneNumber === adminPhone || 
-               userId === adminIdNorm || 
-               userId.startsWith(adminPhone + '@');
+    // Admin list juga sudah berisi phone numbers saja (dari config.js)
+    return config.adminList.some(adminPhone => {
+        // Simple direct comparison
+        return userPhone === adminPhone;
     });
 }
 

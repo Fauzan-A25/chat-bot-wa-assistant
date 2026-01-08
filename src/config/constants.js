@@ -11,15 +11,14 @@ const SUMMARY_MODELS = [
 
 // 🔥 COMPLETE SHEET MAPPING - Updated based on actual Google Sheets
 const SHEET_NAME_MAP = {
-    // PersonalInfo / PersonnalInfo
-    'personalinfo': 'PersonnalInfo',
-    'personnalinfo': 'PersonnalInfo',
-    'personal info': 'PersonnalInfo',
-    'personal': 'PersonnalInfo',
-    'userinfo': 'PersonnalInfo',
-    'profile': 'PersonnalInfo',
-    'biodata': 'PersonnalInfo',
-    'info': 'PersonnalInfo',
+    // PersonalInfo (FIXED: was PersonnalInfo with typo)
+    'personalinfo': 'PersonalInfo',
+    'personal info': 'PersonalInfo',
+    'personal': 'PersonalInfo',
+    'userinfo': 'PersonalInfo',
+    'profile': 'PersonalInfo',
+    'biodata': 'PersonalInfo',
+    'info': 'PersonalInfo',
     
     // SocialLinks
     'sociallinks': 'SocialLinks',

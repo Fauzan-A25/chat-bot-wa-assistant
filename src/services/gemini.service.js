@@ -68,7 +68,12 @@ async function generateWithFallback(options, purpose = 'chat') {
                 }
             });
             
-            responseText = response.text || response.response?.text || 'No response';
+            // ✅ PERBAIKAN: Extract text dari response yang benar
+            // Google Gemini API response structure:
+            // response.candidates[0].content.parts[0].text
+            responseText = response?.candidates?.[0]?.content?.parts?.[0]?.text || 
+                          response?.text || 
+                          'Maaf, saya tidak dapat memberikan respons yang tepat.';
             
             const duration = Date.now() - startTime;
 
@@ -76,6 +81,15 @@ async function generateWithFallback(options, purpose = 'chat') {
                 stats.successCount++;
                 stats.lastUsed = Date.now();
             }
+            
+            // ✅ DEBUG: Log response structure untuk troubleshooting
+            console.log('✅ Response structure:', {
+                hasCandidates: !!response?.candidates,
+                candidatesLength: response?.candidates?.length || 0,
+                textLength: responseText?.length || 0,
+                textPreview: responseText?.substring(0, 60) || 'N/A'
+            });
+            
             console.log(`✅ ${model.name} OK (${duration}ms)`);
             
             return {

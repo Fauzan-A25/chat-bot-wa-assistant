@@ -11,30 +11,88 @@ function formatKantongSakuForWA(data) {
 
   const TOLERANCE_LIMIT = 40000; // Batas toleransi: 40rb
 
-  // Get today's date in format "DD MMM YYYY" or match spreadsheet format
+  // Get today's date 
   const today = new Date();
-  const todayStr = String(today.getDate()).padStart(2, '0') + ' Jan ' + today.getFullYear();
+  const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  
+  console.log(`🔍 KantongSaku filter - Looking for today:`, {
+    todayDate: todayDateOnly.toISOString().split('T')[0],
+    todayFormatted: todayDateOnly.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+    rawDataSample: data.slice(0, 3).map(r => ({ 
+      date: r['Tanggal'], 
+      nominal: r['Nominal'],
+      parsedDate: r['Tanggal'] ? new Date(r['Tanggal']).toISOString().split('T')[0] : 'invalid'
+    }))
+  });
   
   // Filter data for today only
   const todayData = data.filter(row => {
-    const rowDate = row['Tanggal'] || '';
-    return rowDate.toLowerCase().includes(todayStr.toLowerCase()) || 
-           rowDate.includes(String(today.getDate()).padStart(2, '0'));
+    const rowDateStr = String(row['Tanggal'] || '').trim();
+    
+    if (!rowDateStr) {
+      console.log(`⚠️ EMPTY DATE in row:`, row);
+      return false;
+    }
+    
+    try {
+      // Parse ISO date string
+      const rowDate = new Date(rowDateStr);
+      const rowDateOnly = new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate());
+      
+      // Compare dates
+      const matches = rowDateOnly.getTime() === todayDateOnly.getTime();
+      
+      if (matches) {
+        console.log(`✅ MATCHED - Raw: "${rowDateStr}" → Parsed: ${rowDateOnly.toISOString().split('T')[0]}`);
+      }
+      
+      return matches;
+    } catch (e) {
+      console.error(`❌ DATE PARSE ERROR: "${rowDateStr}"`, e.message);
+      return false;
+    }
   });
 
+  console.log(`📊 Filtered ${todayData.length} records for today out of ${data.length} total`);
+
   if (!todayData.length) {
-    return `📂 Tidak ada transaksi untuk hari ini (${todayStr}).`;
+    const todayFormatted = todayDateOnly.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    console.log(`⚠️ NO TRANSACTIONS - Searched for: ${todayFormatted}`);
+    console.log(`📋 Available dates in data:`, data.slice(0, 5).map(r => {
+      try {
+        const d = new Date(r['Tanggal']);
+        return d.toISOString().split('T')[0];
+      } catch (e) {
+        return r['Tanggal'];
+      }
+    }));
+    return `📂 Tidak ada transaksi untuk hari ini (${todayFormatted}).`;
   }
 
   // Find row with Total value (akumulatif dan otomatis update)
+  // ✅ Ambil saldo akhir dari LAST row (baris terakhir hari ini)
   let finalSaldo = 0;
-  for (let i = todayData.length - 1; i >= 0; i--) {
-    const totalValue = String(todayData[i]['Total'] || '').trim();
+  
+  // Get the LAST row (baris terakhir untuk dapatkan total saldo akhir)
+  const lastRow = todayData[todayData.length - 1];
+  
+  // Ambil dari kolom 'Total' di baris terakhir
+  if (lastRow && lastRow['Total']) {
+    const totalValue = String(lastRow['Total'] || '').trim();
     if (totalValue && totalValue !== '' && totalValue !== '0') {
       finalSaldo = parseInt(totalValue.replace(/[^\d-]/g, '')) || 0;
-      break;
+      console.log(`✅ Found saldo from LAST row column "Total": ${finalSaldo}`);
     }
   }
+  
+  // Debug: log semua kolom dari last row
+  console.log(`🔍 Last row data:`, {
+    tanggal: lastRow['Tanggal'],
+    nominal: lastRow['Nominal'],
+    total: lastRow['Total'],
+    merchant: lastRow['Merchant']
+  });
+  console.log(`💰 Final Saldo (from last row):`, finalSaldo);
   
   // Calculate daily expense from ALL transactions
   let dailyExpense = 0;
@@ -316,34 +374,7 @@ async function executeSpreadsheetTool(toolName, params) {
     }
 }
 
-async function addProjectToSheet(projectData) {
-    if (!config.spreadsheetWebAppUrl) {
-        return { success: false, error: 'SPREADSHEET_WEBAPP_URL tidak dikonfigurasi' };
-    }
 
-    try {
-        const response = await fetch(config.spreadsheetWebAppUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                action: 'create',
-                sheet: 'Projects',
-                data: projectData
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('❌ Add to sheet failed:', error);
-        return { success: false, error: error.message };
-    }
-}
 
 function detectSheetName(message, replyContext = '') {
     const fullText = (message + ' ' + replyContext).toLowerCase();
@@ -355,9 +386,7 @@ function detectSheetName(message, replyContext = '') {
         }
     }
     
-    if (fullText.includes('personalinfo') || fullText.includes('personal info')) return 'PersonalInfo';
-    if (fullText.includes('board sales officer') || fullText.includes('board sales')) return 'Board Sales Officer';
-    
+    // Fallback untuk yang tidak di-map (unlikely)
     return null;
 }
 

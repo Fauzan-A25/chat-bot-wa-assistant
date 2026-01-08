@@ -163,6 +163,13 @@ JAWAB NATURAL dengan data REAL di atas. Jangan hallucinate!
             console.log('⚠️ Empty response from AI');
             responseText = 'Maaf, terjadi kesalahan. Silakan coba lagi.';
         }
+        
+        // ✅ SAFETY: Truncate response jika terlalu panjang (WhatsApp has limits)
+        // WhatsApp message limit: ~65K chars, tapi lebih baik limit di 4000 untuk safety
+        if (responseText.length > 4000) {
+            console.log(`⚠️ Response too long (${responseText.length}), truncating to 4000 chars`);
+            responseText = responseText.substring(0, 3990) + '\n\n... (pesan terlalu panjang, dipotong)';
+        }
 
         // OPTIMASI: Save chat history sekali saja di akhir
         console.log('💾 Saving bot response to recent chat...');

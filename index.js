@@ -4,7 +4,7 @@ const config = require('./src/config/config');
 const { TTLMap } = require('./src/utils/cache');
 const { initModelStats } = require('./src/services/gemini.service');
 const { isAdmin, getUserRole } = require('./src/utils/auth.util');
-const { detectIntent, extractParameters, INTENTS } = require('./src/services/intent.service');
+const { detectIntent, INTENTS } = require('./src/services/intent.service');
 const { initPersistence } = require('./src/utils/persistence');
 
 // 🔥 IMPORT ALL HANDLERS
@@ -92,7 +92,6 @@ client.on('message', async (message) => {
     }
     
     // Fetch and return kantong saku
-    const { handleShowKantongSaku } = require('./src/handlers/kantongsaku.handler');
     return await handleShowKantongSaku(message, userId);
   }
 

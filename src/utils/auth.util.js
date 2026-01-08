@@ -22,34 +22,41 @@ function isAdmin(userId) {
     // Debug logging with format detection
     let formatDetected = 'unknown';
     if (userId.includes('@c.us')) formatDetected = '@c.us (WhatsApp Web)';
-    else if (userId.includes('@s.whatsapp.net')) formatDetected = '@s.whatsapp.net (Baileys)';
+    else if (userId.includes('@s.whatsapp.net')) formatDetected = '@s.whatsapp.net (Baileys/Mobile)';
     else if (userId.includes('@g.us')) formatDetected = '@g.us (Group)';
     
-    console.log(`🔐 Auth Check:`, {
-        userId: userId,
-        format: formatDetected,
-        extractedPhone: userPhone,
-        adminList: config.adminList,
-        phoneLength: userPhone.length
-    });
+    console.log(`\n🔐 ===== AUTH CHECK START =====`);
+    console.log(`📌 Raw userId: "${userId}"`);
+    console.log(`📌 Format Detected: ${formatDetected}`);
+    console.log(`📌 Extracted Phone: "${userPhone}" (length: ${userPhone.length})`);
+    console.log(`📌 Admin List from .env:`, config.adminList);
+    console.log(`📌 Admin List details:`, config.adminList.map((phone, i) => {
+        const cleaned = String(phone).replace(/[^0-9]/g, '');
+        return `[${i}] "${phone}" → cleaned: "${cleaned}" (len: ${cleaned.length})`;
+    }));
     
     // Compare extracted phone with admin list
-    const isAdminUser = config.adminList.some(adminPhone => {
+    let isAdminUser = false;
+    let matchedAdmin = null;
+    
+    for (let i = 0; i < config.adminList.length; i++) {
+        const adminPhone = config.adminList[i];
         const adminPhoneStr = String(adminPhone).replace(/[^0-9]/g, '');
         const isMatch = userPhone === adminPhoneStr;
         
-        if (isMatch) {
-            console.log(`✅ MATCHED: user phone "${userPhone}" === admin phone "${adminPhoneStr}"`);
-        }
+        console.log(`   Comparing [${i}]: "${userPhone}" (user) === "${adminPhoneStr}" (admin) → ${isMatch}`);
         
-        return isMatch;
-    });
-    
-    if (isAdminUser) {
-        console.log(`✅ ADMIN VERIFIED: ${userPhone} (${formatDetected})`);
-    } else {
-        console.log(`❌ NOT ADMIN: ${userPhone} (allowed: ${config.adminList.join(', ')})`);
+        if (isMatch) {
+            isAdminUser = true;
+            matchedAdmin = adminPhone;
+            console.log(`   ✅ MATCH FOUND at index ${i}`);
+            break;
+        }
     }
+    
+    console.log(`\n📊 Result: ${isAdminUser ? '✅ ADMIN' : '❌ NOT ADMIN'}`);
+    if (matchedAdmin) console.log(`   Matched with: "${matchedAdmin}"`);
+    console.log(`🔐 ===== AUTH CHECK END =====\n`);
     
     return isAdminUser;
 }

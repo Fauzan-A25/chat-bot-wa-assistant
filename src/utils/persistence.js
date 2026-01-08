@@ -18,9 +18,13 @@ function ensureDirectories() {
 }
 
 // Get user folder (sanitize userId untuk safe filename)
+// ✅ FIXED: Normalize path untuk cross-platform compatibility (Windows + Ubuntu)
 function getUserDataPath(userId) {
-    const sanitized = userId.replace(/[^a-zA-Z0-9]/g, '_');
-    return path.join(USER_DATA_DIR, sanitized);
+    // Consistent sanitization: @c.us → _c_us
+    const sanitized = userId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const userPath = path.join(USER_DATA_DIR, sanitized);
+    // Normalize path untuk cross-platform (convert \ ke / on Windows)
+    return path.normalize(userPath);
 }
 
 // Get file path untuk setiap data type

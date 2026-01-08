@@ -2,18 +2,25 @@ const config = require('../config/config');
 
 /**
  * Check if user is admin
+ * ✅ FIXED: Cross-platform compatible admin check
  * @param {string} userId - WhatsApp user ID (format: 6281234567890@c.us)
  * @returns {boolean}
  */
 function isAdmin(userId) {
     if (!userId || config.adminList.length === 0) return false;
     
-    // Extract phone number from WhatsApp ID
-    const phoneNumber = userId.split('@')[0];
+    // Extract phone number from WhatsApp ID (handle both with/without @c.us)
+    const phoneNumber = String(userId).split('@')[0].trim();
     
     return config.adminList.some(adminId => {
-        const adminPhone = adminId.trim().replace(/[@]/g, '');
-        return phoneNumber === adminPhone || userId === adminId;
+        // Normalize admin ID untuk comparison
+        const adminIdNorm = String(adminId).trim();
+        const adminPhone = adminIdNorm.split('@')[0].trim();
+        
+        // Check both full ID dan phone number
+        return phoneNumber === adminPhone || 
+               userId === adminIdNorm || 
+               userId.startsWith(adminPhone + '@');
     });
 }
 

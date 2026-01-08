@@ -106,32 +106,13 @@ function formatKantongSakuForWA(data) {
     return rowDate.getTime() === targetDate.getTime();
   });
   
-  // If no data for today, use the latest available date
-  if (!todayData.length && uniqueDates.length > 0) {
-    targetDate = uniqueDates[0].date;
-    const day = targetDate.getUTCDate().toString().padStart(2, '0');
-    const month = targetDate.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-    const year = targetDate.getUTCFullYear();
-    targetDateStr = `${day} ${month} ${year}`;
-    
-    console.log(`📅 No today's data, using latest available: ${targetDateStr}`);
-    
-    todayData = data.filter(row => {
-      const rowDateStr = String(row['Tanggal'] || '').trim();
-      if (!rowDateStr) return false;
-      
-      const rowDate = parseTanggalString(rowDateStr);
-      if (!rowDate) return false;
-      
-      return rowDate.getTime() === targetDate.getTime();
-    });
+  // ✅ Jika tidak ada data hari ini, langsung beritahu
+  if (!todayData.length) {
+    console.log(`📅 No data for today (${targetDateStr}), returning empty state`);
+    return `📂 Hari ini belum ada transaksi apapun.\n\n💰 *KANTONG SAKU*\n📅 ${targetDateStr}\n\n🟢 Belum ada aktivitas hari ini.`;
   }
 
   console.log(`📊 Filtered ${todayData.length} records for ${targetDateStr} out of ${data.length} total`);
-
-  if (!todayData.length) {
-    return `📂 Tidak ada data transaksi yang tersedia.`;
-  }
 
   // Find row with Total value (akumulatif dan otomatis update)
   // ✅ Ambil saldo akhir dari LAST row (baris terakhir hari ini)

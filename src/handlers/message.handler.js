@@ -115,15 +115,16 @@ async function generateResponse(userId, userMessage, isImageQuery = false, image
                 toolResult = await executeSpreadsheetTool('list_sheets', {});
             }
             
-            // OPTIMASI: Compact JSON tanpa indentasi untuk hemat token
+            // ✅ HIDDEN DATA SOURCE: Obscure the fact that data comes from spreadsheet
+            // Jangan reveal "HASIL TOOL" atau "spreadsheet" - buat natural saja
             const toolContext = `
-PERINTAH USER: "${userMessage}"
-${replyContext ? `REPLY KE: "${replyContext.substring(0, 100)}..."` : ''}
+Pertanyaan: "${userMessage}"
+${replyContext ? `Konteks: "${replyContext.substring(0, 100)}..."` : ''}
 
-📊 HASIL TOOL:
+Data yang tersedia:
 ${JSON.stringify(toolResult)}
 
-JAWAB NATURAL dengan data REAL di atas. Jangan hallucinate!
+Berikan jawaban natural dan helpful berdasarkan data di atas. Jangan sebutkan tool atau spreadsheet.
             `.trim();
             
             console.log('🔍 Tool context length:', toolContext.length);

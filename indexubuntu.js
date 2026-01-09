@@ -21,7 +21,6 @@ const { handleClearCommand, handleSheetsCommand, handleMemoryCommand, handleMode
 const { handleStorageCommand } = require('./src/handlers/storage.handler');
 const { handleShowKantongSaku } = require('./src/handlers/kantongsaku.handler');
 const { extractQuery, generateResponse } = require('./src/handlers/message.handler');
-const { messageQueue } = require('./src/utils/message.queue');
 
 // Validate config
 config.validate();
@@ -138,24 +137,7 @@ async function startBot() {
       messageBody = messageBody.substring(BOT_PREFIX.length).trim();
     }
 
-    // ✅ ENQUEUE message untuk user ini - handle secara sequential
-    console.log(`📨 New message from ${userId.substring(0, 12)}... (queue size: ${messageQueue.getQueueSize(userId)})`);
-    
-    // ✅ IMPORTANT: Preserve original message object with all methods (reply, etc.)
-    msg.body = messageBody;
-    
-    await messageQueue.enqueue(userId, msg, 
-      async (processedMessage) => {
-        return await handleMessageWithIntentDetection(processedMessage, userId);
-      }
-    );
-  });
-
-  // ✅ MESSAGE PROCESSING LOGIC (dipanggil oleh queue handler)
-  async function handleMessageWithIntentDetection(message, userId) {
-    // 🔥 SMART COMMAND ROUTING dengan AI Intent Detection
-    const messageBody = message.body;
-    const pendingAction = deleteConfirmations.get(userId)?.action;
+    // ✅ CACHE ADMIN STATUS ONCE - jangan check berkali-kali
     const isUserAdmin = isAdmin(userId);
     const userRole = getUserRole(userId);
     
@@ -168,16 +150,19 @@ async function startBot() {
       
       // Check admin access
       if (!isUserAdmin) {
-        return await message.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
+        return msg.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
       }
       
       // Fetch and return kantong saku
-      return await handleShowKantongSaku(message, userId);
+      return await handleShowKantongSaku(msg, userId);
     }
+
+    // 🔥 SMART COMMAND ROUTING dengan AI Intent Detection
+    const pendingAction = deleteConfirmations.get(userId)?.action;
 
     try {
       // Extract context dari message (gunakan messageBody tanpa prefix)
-      const { query, replyContext } = await extractQuery({ ...message, body: messageBody });
+      const { query, replyContext } = await extractQuery({ ...msg, body: messageBody });
       
       // 🧠 Detect intent dengan AI
       console.log('🧠 Detecting user intent...');
@@ -190,62 +175,62 @@ async function startBot() {
       // 🔒 PROJECT-RELATED INTENTS (Admin only)
       if ([INTENTS.ADD_PROJECT, INTENTS.EDIT_PROJECT, INTENTS.CONFIRM_PROJECT, INTENTS.CANCEL_PROJECT].includes(intent)) {
         if (!isUserAdmin) {
-          return await message.reply(`🔒 Hanya admin yang bisa manage projects.\n👤 Role anda: ${userRole}`);
+          return msg.reply(`🔒 Hanya admin yang bisa manage projects.\n👤 Role anda: ${userRole}`);
         }
       }
       
       // ADD_PROJECT Intent
       if (intent === INTENTS.ADD_PROJECT) {
         console.log('🔥 ADD PROJECT INTENT TRIGGERED!');
-        return await handleAddProject(message, userId, busyUsers);
+        return handleAddProject(msg, userId, busyUsers);
       }
       
       // EDIT_PROJECT Intent
       if (intent === INTENTS.EDIT_PROJECT) {
         console.log('🔧 EDIT PROJECT INTENT TRIGGERED!');
         if (pendingAction === 'addproject') {
-          return await handleEditProject(message, userId, busyUsers);
+          return handleEditProject(msg, userId, busyUsers);
         }
-        return await message.reply('❌ Edit apa? Gunakan `.addproject` dulu atau tambah project baru.');
+        return msg.reply('❌ Edit apa? Gunakan `.addproject` dulu atau tambah project baru.');
       }
       
       // SHOW_PROJECT Intent
       if (intent === INTENTS.SHOW_PROJECT) {
         console.log('👀 SHOW PROJECT INTENT TRIGGERED!');
         if (pendingAction === 'addproject') {
-          return await handleShowProject(message, userId);
+          return handleShowProject(msg, userId);
         }
-        return await message.reply('❌ Show apa? Gunakan `.addproject` dulu atau tambah project baru.');
+        return msg.reply('❌ Show apa? Gunakan `.addproject` dulu atau tambah project baru.');
       }
       
       // CONFIRM_PROJECT Intent
       if (intent === INTENTS.CONFIRM_PROJECT) {
         console.log('✅ CONFIRM PROJECT INTENT TRIGGERED!');
         if (pendingAction === 'addproject') {
-          return await handleConfirmProject(message, userId, busyUsers);
+          return handleConfirmProject(msg, userId, busyUsers);
         }
-        return await message.reply('❌ Tidak ada aksi pending. Tambah project dulu dengan menyebutkan project baru.');
+        return msg.reply('❌ Tidak ada aksi pending. Tambah project dulu dengan menyebutkan project baru.');
       }
       
       // CANCEL_PROJECT Intent
       if (intent === INTENTS.CANCEL_PROJECT) {
         console.log('❌ CANCEL PROJECT INTENT TRIGGERED!');
         if (pendingAction === 'addproject') {
-          return await handleCancelProject(message, userId);
+          return handleCancelProject(msg, userId);
         }
-        return await message.reply('❌ Tidak ada aksi yang dibatalkan.');
+        return msg.reply('❌ Tidak ada aksi yang dibatalkan.');
       }
       
       // CLEAR_MEMORY Intent
       if (intent === INTENTS.CLEAR_MEMORY) {
         console.log('🗑️ CLEAR MEMORY INTENT TRIGGERED!');
-        return await handleClearCommand(message, userId);
+        return handleClearCommand(msg, userId);
       }
       
       // SHOW_SHEETS Intent
       if (intent === INTENTS.SHOW_SHEETS) {
         console.log('📊 SHOW SHEETS INTENT TRIGGERED!');
-        return await handleSheetsCommand(message);
+        return handleSheetsCommand(msg);
       }
       
       // SHOW_MEMORY Intent
@@ -254,19 +239,19 @@ async function startBot() {
         if (topic) {
           console.log(`📌 Topic requested: ${topic}`);
         }
-        return await handleMemoryCommand(message, userId, topic);
+        return handleMemoryCommand(msg, userId, topic);
       }
       
       // SHOW_MODELS Intent
       if (intent === INTENTS.SHOW_MODELS) {
         console.log('🤖 SHOW MODELS INTENT TRIGGERED!');
-        return await handleModelsCommand(message);
+        return handleModelsCommand(msg);
       }
       
       // SHOW_STORAGE Intent
       if (intent === INTENTS.SHOW_STORAGE) {
         console.log('📂 SHOW STORAGE INTENT TRIGGERED!');
-        return await handleStorageCommand(message, userId);
+        return handleStorageCommand(msg, userId);
       }
       
       // SHOW_KANTONGSAKU Intent (ADMIN ONLY)
@@ -275,10 +260,10 @@ async function startBot() {
         
         // ✅ SUDAH CACHED - tidak perlu check ulang
         if (!isUserAdmin) {
-          return await message.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
+          return msg.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
         }
         
-        return await handleShowKantongSaku(message, userId);
+        return await handleShowKantongSaku(msg, userId);
       }
       
       // HELP Intent
@@ -312,28 +297,31 @@ async function startBot() {
         helpText += `💬 **Chat:**\n`;
         helpText += `• Tanyakan apapun ke AI - bot akan otomatis mengerti intent Anda!`;
         
-        return await message.reply(helpText);
+        return msg.reply(helpText);
       }
       
       // DEFAULT: CHAT Intent
       if (intent === INTENTS.CHAT) {
         console.log('💬 NORMAL CHAT INTENT');
+        busyUsers.add(userId);
         
         try {
           if (!query.trim()) {
-            return await message.reply('💡 Tanyakan apapun ke saya!\nContoh: "lihat Projects", "data apa saja"');
+            await msg.reply('💡 Tanyakan apapun ke saya!\nContoh: "lihat Projects", "data apa saja"');
+            return;
           }
 
           const cacheKey = query + (replyContext ? '|' + replyContext.substring(0,50) : '');
           const cached = optimizedCache.get(cacheKey);
           if (cached) {
             console.log('📦 Cache HIT - returning cached response');
-            return await message.reply(cached);
+            await msg.reply(cached);
+            return;
           }
 
           let imageData = null;
-          if (message.hasMedia) {
-            const media = await message.downloadMedia().catch(() => null);
+          if (msg.hasMedia) {
+            const media = await msg.downloadMedia().catch(() => null);
             if (media && media.mimetype.startsWith('image/')) {
               imageData = { mimetype: media.mimetype, data: media.data };
               console.log('🖼️ Image detected');
@@ -358,20 +346,22 @@ async function startBot() {
           optimizedCache.set(cacheKey, response);
           
           console.log('📤 Sending reply...');
-          return await message.reply(response.trim());
+          await msg.reply(response.trim());
           
         } catch (error) {
           console.error('❌ CHAT ERROR:', error.message);
           console.error('Stack trace:', error.stack);
-          return await message.reply('⚠️ Error teknis. Coba lagi dalam beberapa saat.');
+          await msg.reply('⚠️ Error teknis. Coba lagi dalam beberapa saat.');
+        } finally {
+          busyUsers.delete(userId);
         }
       }
       
     } catch (error) {
       console.error('❌ MESSAGE HANDLER ERROR:', error);
-      return await message.reply('⚠️ Terjadi error. Coba lagi atau hubungi admin.');
+      await msg.reply('⚠️ Terjadi error. Coba lagi atau hubungi admin.');
     }
-  }
+  });
 
   await sock.waitForSocketOpen();
 }

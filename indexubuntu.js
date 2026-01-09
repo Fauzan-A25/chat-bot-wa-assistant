@@ -62,7 +62,11 @@ function adaptMessage(baileysMsg, sock) {
     },
     downloadMedia: async () => null, // Simplified
     reply: async (text) => {
-      await sock.sendMessage(baileysMsg.key.remoteJid, { text });
+      // ✅ QUOTE REPLY - balas dengan quote ke pesan asli
+      await sock.sendMessage(baileysMsg.key.remoteJid, 
+        { text: text }, 
+        { quoted: baileysMsg }
+      );
     }
   };
 }

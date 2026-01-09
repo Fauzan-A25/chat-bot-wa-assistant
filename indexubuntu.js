@@ -123,7 +123,7 @@ async function startBot() {
     // Adapt message ke format yang kompatibel
     const msg = adaptMessage(message, sock);
 
-    // 🔥 CHECK PREFIX - Only process messages starting with !
+    if (busyUsers.has(userId)) return;
     if (REQUIRE_PREFIX && !message.message.conversation?.startsWith(BOT_PREFIX)) {
       const textCheck = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
       if (!textCheck.startsWith(BOT_PREFIX)) {
@@ -150,7 +150,7 @@ async function startBot() {
       
       // Check admin access
       if (!isUserAdmin) {
-        return msg.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
+        return await msg.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
       }
       
       // Fetch and return kantong saku
@@ -175,50 +175,50 @@ async function startBot() {
       // 🔒 PROJECT-RELATED INTENTS (Admin only)
       if ([INTENTS.ADD_PROJECT, INTENTS.EDIT_PROJECT, INTENTS.CONFIRM_PROJECT, INTENTS.CANCEL_PROJECT].includes(intent)) {
         if (!isUserAdmin) {
-          return msg.reply(`🔒 Hanya admin yang bisa manage projects.\n👤 Role anda: ${userRole}`);
+          return await msg.reply(`🔒 Hanya admin yang bisa manage projects.\n👤 Role anda: ${userRole}`);
         }
       }
       
       // ADD_PROJECT Intent
       if (intent === INTENTS.ADD_PROJECT) {
         console.log('🔥 ADD PROJECT INTENT TRIGGERED!');
-        return handleAddProject(msg, userId, busyUsers);
+        return await handleAddProject(msg, userId, busyUsers);
       }
       
       // EDIT_PROJECT Intent
       if (intent === INTENTS.EDIT_PROJECT) {
         console.log('🔧 EDIT PROJECT INTENT TRIGGERED!');
         if (pendingAction === 'addproject') {
-          return handleEditProject(msg, userId, busyUsers);
+          return await handleEditProject(msg, userId, busyUsers);
         }
-        return msg.reply('❌ Edit apa? Gunakan `.addproject` dulu atau tambah project baru.');
+        return await msg.reply('❌ Edit apa? Gunakan `.addproject` dulu atau tambah project baru.');
       }
       
       // SHOW_PROJECT Intent
       if (intent === INTENTS.SHOW_PROJECT) {
         console.log('👀 SHOW PROJECT INTENT TRIGGERED!');
         if (pendingAction === 'addproject') {
-          return handleShowProject(msg, userId);
+          return await handleShowProject(msg, userId);
         }
-        return msg.reply('❌ Show apa? Gunakan `.addproject` dulu atau tambah project baru.');
+        return await msg.reply('❌ Show apa? Gunakan `.addproject` dulu atau tambah project baru.');
       }
       
       // CONFIRM_PROJECT Intent
       if (intent === INTENTS.CONFIRM_PROJECT) {
         console.log('✅ CONFIRM PROJECT INTENT TRIGGERED!');
         if (pendingAction === 'addproject') {
-          return handleConfirmProject(msg, userId, busyUsers);
+          return await handleConfirmProject(msg, userId, busyUsers);
         }
-        return msg.reply('❌ Tidak ada aksi pending. Tambah project dulu dengan menyebutkan project baru.');
+        return await msg.reply('❌ Tidak ada aksi pending. Tambah project dulu dengan menyebutkan project baru.');
       }
       
       // CANCEL_PROJECT Intent
       if (intent === INTENTS.CANCEL_PROJECT) {
         console.log('❌ CANCEL PROJECT INTENT TRIGGERED!');
         if (pendingAction === 'addproject') {
-          return handleCancelProject(msg, userId);
+          return await handleCancelProject(msg, userId);
         }
-        return msg.reply('❌ Tidak ada aksi yang dibatalkan.');
+        return await msg.reply('❌ Tidak ada aksi yang dibatalkan.');
       }
       
       // CLEAR_MEMORY Intent
@@ -260,7 +260,7 @@ async function startBot() {
         
         // ✅ SUDAH CACHED - tidak perlu check ulang
         if (!isUserAdmin) {
-          return msg.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
+          return await msg.reply(`🔒 Hanya admin yang bisa akses Kantong Saku!\n👤 Role anda: ${userRole}\n\nHubungi admin untuk informasi pengeluaran.`);
         }
         
         return await handleShowKantongSaku(msg, userId);
@@ -297,7 +297,7 @@ async function startBot() {
         helpText += `💬 **Chat:**\n`;
         helpText += `• Tanyakan apapun ke AI - bot akan otomatis mengerti intent Anda!`;
         
-        return msg.reply(helpText);
+        return await msg.reply(helpText);
       }
       
       // DEFAULT: CHAT Intent
